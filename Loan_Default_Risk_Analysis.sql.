@@ -1,0 +1,305 @@
+USE creditriskanalysis;
+
+#  Count records in each table
+#  This checks whether the expected number of borrower and loan records were imported
+SELECT COUNT(*) AS total_borrowers
+FROM borrower_profiles;
+
+SELECT COUNT(*) AS total_loans
+FROM loan_applications;
+
+# Check for missing values
+SELECT *
+FROM borrower_profiles
+WHERE credit_score IS NULL
+   OR annual_income IS NULL;
+   
+# Join borrower and loan tables
+   SELECT
+    b.borrower_id,
+    b.age,
+    b.state,
+    b.education_level,
+    b.employment_status,
+    b.years_employed,
+    b.annual_income,
+    b.credit_score,
+    b.home_ownership,
+    b.dependents,
+    b.existing_monthly_debt,
+    l.loan_id,
+    l.application_date,
+    l.loan_purpose,
+    l.loan_amount,
+    l.term_months,
+    l.interest_rate,
+    l.monthly_payment,
+    l.dti_ratio,
+    l.loan_status,
+    l.days_delinquent,
+    l.defaulted
+FROM borrower_profiles b
+JOIN loan_applications l
+ON b.borrower_id = l.borrower_id;
+
+# Overall default rate
+ #  This calculates the percentage of all loans that defaulted.
+ #  It gives the baseline risk level for the full loan portfolio.   
+ 
+ SELECT
+    COUNT(CASE WHEN defaulted = 1 THEN 1 END) AS defaulted_loans,
+    COUNT(*) AS total_loans,
+    ROUND(
+        COUNT(CASE WHEN defaulted = 1 THEN 1 END) * 100.0 / COUNT(*),
+        2
+    ) AS default_rate_percent
+FROM loan_applications;
+
+#Default rate by credit score bucket
+ # This groups borrowers into credit score ranges and calculates
+ # default rate for each group. This helps identify which credit
+ #  score range has the highest risk.
+ 
+ 
+ SELECT
+    CASE
+        WHEN credit_score BETWEEN 520 AND 599 THEN '520-599'
+        WHEN credit_score BETWEEN 600 AND 649 THEN '600-649'
+        WHEN credit_score BETWEEN 650 AND 699 THEN '650-699'
+        WHEN credit_score BETWEEN 700 AND 749 THEN '700-749'
+        ELSE '750+'
+    END AS credit_score_bucket,
+
+    COUNT(*) AS total_loans,
+
+    COUNT(CASE WHEN defaulted = 1 THEN 1 END) AS defaulted_loans,
+
+    ROUND(
+        COUNT(CASE WHEN defaulted = 1 THEN 1 END) * 100.0 / COUNT(*),
+        2
+    ) AS default_rate_percent
+
+FROM borrower_profiles b
+JOIN loan_applications l
+ON b.borrower_id = l.borrower_id
+
+GROUP BY
+    CASE
+        WHEN credit_score BETWEEN 520 AND 599 THEN '520-599'
+        WHEN credit_score BETWEEN 600 AND 649 THEN '600-649'
+        WHEN credit_score BETWEEN 650 AND 699 THEN '650-699'
+        WHEN credit_score BETWEEN 700 AND 749 THEN '700-749'
+        ELSE '750+'
+    END
+
+ORDER BY default_rate_percent DESC;
+
+
+# Default rate by DTI bucket
+ #  DTI means debt-to-income ratio. This query groups borrowers
+ #  by DTI level and calculates default risk for each group.
+ #  This helps recommend a DTI cutoff for loan approval.
+ 
+ SELECT
+    CASE
+        WHEN dti_ratio < 20 THEN 'Under 20%'
+        WHEN dti_ratio BETWEEN 20 AND 35 THEN '20%-35%'
+        WHEN dti_ratio BETWEEN 36 AND 50 THEN '36%-50%'
+        ELSE 'Over 50%'
+    END AS dti_bucket,
+
+    COUNT(*) AS total_loans,
+
+    COUNT(CASE WHEN defaulted = 1 THEN 1 END) AS defaulted_loans,
+
+    ROUND(
+        COUNT(CASE WHEN defaulted = 1 THEN 1 END) * 100.0 / COUNT(*),
+        2
+    ) AS default_rate_percent
+
+FROM borrower_profiles b
+JOIN loan_applications l
+ON b.borrower_id = l.borrower_id
+
+GROUP BY
+    CASE
+        WHEN dti_ratio < 20 THEN 'Under 20%'
+        WHEN dti_ratio BETWEEN 20 AND 35 THEN '20%-35%'
+        WHEN dti_ratio BETWEEN 36 AND 50 THEN '36%-50%'
+        ELSE 'Over 50%'
+    END
+
+ORDER BY default_rate_percent DESC;
+
+
+# Default rate by loan purpose
+ #  This identifies which loan purposes have the highest default
+ #  rates and compares average loan amount by purpose.
+ 
+ SELECT
+    loan_purpose,
+
+    COUNT(*) AS total_loans,
+
+    COUNT(CASE WHEN defaulted = 1 THEN 1 END) AS defaulted_loans,
+
+    ROUND(AVG(loan_amount), 2) AS avg_loan_amount,
+
+    ROUND(
+        COUNT(CASE WHEN defaulted = 1 THEN 1 END) * 100.0 / COUNT(*),
+        2
+    ) AS default_rate_percent
+
+FROM loan_applications
+
+GROUP BY loan_purpose
+
+ORDER BY default_rate_percent DESC;
+
+# Average loan amount by default status
+ #  This compares whether defaulted loans tend to have higher
+ #  average loan amounts than non-defaulted loans.
+
+SELECT
+
+    CASE
+        WHEN defaulted = 1 THEN 'Defaulted'
+        ELSE 'Not Defaulted'
+    END AS repayment_group,
+
+    COUNT(*) AS total_loans,
+
+    ROUND(AVG(loan_amount), 2) AS avg_loan_amount,
+
+    ROUND(AVG(interest_rate), 2) AS avg_interest_rate
+
+FROM loan_applications
+
+GROUP BY
+
+    CASE
+        WHEN defaulted = 1 THEN 'Defaulted'
+        ELSE 'Not Defaulted'
+    END;
+
+# Default rate by employment status
+ # This compares default risk across employment categories.
+ #  It helps determine whether employment status is related to
+ #  borrower repayment risk.
+ 
+ SELECT
+    employment_status,
+
+    COUNT(*) AS total_loans,
+
+    COUNT(CASE WHEN defaulted = 1 THEN 1 END) AS defaulted_loans,
+
+    ROUND(
+        COUNT(CASE WHEN defaulted = 1 THEN 1 END) * 100.0 / COUNT(*),
+        2
+    ) AS default_rate_percent
+
+FROM borrower_profiles b
+JOIN loan_applications l
+ON b.borrower_id = l.borrower_id
+
+GROUP BY employment_status
+
+ORDER BY default_rate_percent DESC;
+
+
+# Default rate by years employed
+ # This checks whether borrowers with less than 2 years of
+ #  employment are more likely to default. 
+ 
+ SELECT
+    CASE
+        WHEN years_employed < 2 THEN '<2 Years'
+        WHEN years_employed BETWEEN 2 AND 5 THEN '2-5 Years'
+        ELSE '5+ Years'
+    END AS employment_length_bucket,
+
+    COUNT(*) AS total_loans,
+
+    COUNT(CASE WHEN defaulted = 1 THEN 1 END) AS defaulted_loans,
+
+    ROUND(
+        COUNT(CASE WHEN defaulted = 1 THEN 1 END) * 100.0 / COUNT(*),
+        2
+    ) AS default_rate_percent
+
+FROM borrower_profiles b
+JOIN loan_applications l
+ON b.borrower_id = l.borrower_id
+
+GROUP BY
+    CASE
+        WHEN years_employed < 2 THEN '<2 Years'
+        WHEN years_employed BETWEEN 2 AND 5 THEN '2-5 Years'
+        ELSE '5+ Years'
+    END
+
+ORDER BY default_rate_percent DESC;
+
+# Numeric risk factor averages by default status
+ # This compares averages for important numeric variables between
+ #  defaulted and non-defaulted loans.
+ 
+SELECT
+    CASE
+        WHEN defaulted = 1 THEN 'Defaulted'
+        ELSE 'Not Defaulted'
+    END AS repayment_group,
+
+    COUNT(*) AS total_loans,
+
+    ROUND(AVG(credit_score), 2) AS avg_credit_score,
+
+    ROUND(AVG(dti_ratio), 2) AS avg_dti_ratio,
+
+    ROUND(AVG(annual_income), 2) AS avg_annual_income,
+
+    ROUND(AVG(loan_amount), 2) AS avg_loan_amount,
+
+    ROUND(AVG(interest_rate), 2) AS avg_interest_rate,
+
+    ROUND(AVG(years_employed), 2) AS avg_years_employed
+
+FROM borrower_profiles b
+JOIN loan_applications l
+ON b.borrower_id = l.borrower_id
+
+
+GROUP BY defaulted;
+
+
+
+SELECT
+
+    borrower_id,          -- Unique borrower identifier
+
+    dti_ratio,            -- Debt-to-income ratio
+
+    defaulted             -- Default status
+                           -- 0 = Not Defaulted
+                           -- 1 = Defaulted
+
+FROM loan_applications; 
+
+SELECT
+
+    ROUND(
+        COUNT(CASE WHEN defaulted = 1 THEN 1 END)
+        * 100.0 / COUNT(*),
+        2
+    ) AS overall_default_rate,
+
+    ROUND(AVG(dti_ratio), 2) AS avg_dti,
+
+    ROUND(AVG(interest_rate), 2) AS avg_interest_rate,
+
+    ROUND(AVG(loan_amount), 2) AS avg_loan_amount,
+
+    COUNT(*) AS total_loans
+
+FROM loan_applications;
