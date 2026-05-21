@@ -1,0 +1,3 @@
+repayment_group,total_loans,avg_loan_amount,avg_interest_rate
+"Not Defaulted",455,22012.75,10.39
+Defaulted,146,22570.55,11.43

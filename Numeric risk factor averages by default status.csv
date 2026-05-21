@@ -1,0 +1,3 @@
+repayment_group,total_loans,avg_credit_score,avg_dti_ratio,avg_annual_income,avg_loan_amount,avg_interest_rate,avg_years_employed
+"Not Defaulted",455,721.67,47.05,66405.02,22012.75,10.39,10.96
+Defaulted,146,656.13,57.87,60853.95,22570.55,11.43,10.80

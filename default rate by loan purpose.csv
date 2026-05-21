@@ -1,0 +1,11 @@
+loan_purpose,total_loans,defaulted_loans,avg_loan_amount,default_rate_percent
+Wedding,56,18,21892.86,32.14
+"Home Improvement",70,20,23407.14,28.57
+"Auto Loan",59,16,19554.24,27.12
+"Business Loan",58,14,21013.79,24.14
+Education,53,12,19847.17,22.64
+Vacation,62,14,24477.42,22.58
+"Major Purchase",68,15,23164.71,22.06
+"Debt Consolidation",51,11,22756.86,21.57
+Moving,56,12,21300,21.43
+"Medical Expenses",68,14,23176.47,20.59
